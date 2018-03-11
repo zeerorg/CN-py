@@ -2,7 +2,7 @@
 CRC 32 algorithm implementation
 """
 from collections import deque
-from func_py import compose
+from toolz import compose
 from functools import reduce, partial
 from operator import __xor__
 
