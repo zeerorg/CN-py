@@ -15,7 +15,10 @@ start_time = time.time()
 data = queue.Queue()
 ack = queue.Queue()
 data_reach = queue.Queue()
-probability_of_recv = 0.3
+probability_of_recv = 0.5
+
+def curr_time(rd=2):
+    return round(time.time() - start_time, rd)
 
 def sender_data(to_send, lat=0.25):
     def send_func():
@@ -42,11 +45,8 @@ def sender_task():
                 # remove value from new window
                 new_window.remove(recv_ack)
                 all_acks.append(recv_ack)
-                print("Sender:: Received ack {} at {}".format(recv_ack, round(time.time() - start_time, 2)))
+                print("Sender:: Received ack {} at {}".format(recv_ack, curr_time()))
         
-        if data_list[new_window[0]] == None:
-            break
-
         # wait for timeouts
         while new_window.__len__() != 0 and time.time() - sent_time < 1.0:
             # collect acknowledgments
@@ -55,27 +55,21 @@ def sender_task():
                 # remove value from new window
                 new_window.remove(recv_ack)
                 all_acks.append(recv_ack)
-                print("Sender:: Received ack {} at {}".format(recv_ack, round(time.time() - start_time, 2)))
+                print("Sender:: Received ack {} at {}".format(recv_ack, curr_time()))
 
         all_acks = sorted(all_acks)
-        # correct next window
-        if new_window.__len__() == 0:
-            window = [all_acks[-1] + 1, all_acks[-1] + 2, all_acks[-1] + 3, all_acks[-1] + 4]
-        else:
-            window = list(new_window)
-            while window[-1] - window[0] < 4:
-                window.append(window[-1]+1)
-
-        while window[-1] > data_list.__len__() - 1:
+        window = list(range(len(data_list)))
+        for temp_ack in all_acks:
+            window.remove(temp_ack)
+        while window[-1] - window[0] >= 4:
             window.pop()
-        
 
 def receiver_ack(to_send, lat=0.25):
     def send_func():
         ack.put(to_send)
 
     threading.Timer(lat, send_func).start()
-    print("Receiver:: Sent ack {} at {}".format(to_send, round(time.time() - start_time, 2)))
+    print("Receiver:: Sent ack {} at {}".format(to_send, curr_time()))
 
 def receiver_task():
     received_chunks = []
@@ -84,13 +78,10 @@ def receiver_task():
             # consume data
             recv_data = data.get()
             if random.random() > probability_of_recv:
-                print("dropped")
+                print("Dropped :: {} at {}".format(recv_data, curr_time()))
                 continue
-
-            if recv_data == None:
-                break
-            
-            print("Receiver:: Received {} at {}".format(recv_data['data'], round(time.time() - start_time, 2)))
+ 
+            print("Receiver:: Received {} at {}".format(recv_data['data'], curr_time()))
 
             # send ack
             receiver_ack(recv_data['seq'])
