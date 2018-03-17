@@ -17,7 +17,7 @@ ack = queue.Queue()
 data_reach = queue.Queue()
 probability_of_recv = 0.3
 
-def sender_data(to_send, lat=0.025):
+def sender_data(to_send, lat=0.25):
     def send_func():
         data.put(to_send)
 
@@ -48,7 +48,7 @@ def sender_task():
             break
 
         # wait for timeouts
-        while new_window.__len__() != 0 and time.time() - sent_time < 0.25:
+        while new_window.__len__() != 0 and time.time() - sent_time < 1.0:
             # collect acknowledgments
             while not ack.empty():
                 recv_ack = ack.get()
@@ -63,14 +63,14 @@ def sender_task():
             window = [all_acks[-1] + 1, all_acks[-1] + 2, all_acks[-1] + 3, all_acks[-1] + 4]
         else:
             window = list(new_window)
-            while window.__len__() < 4:
+            while window[-1] - window[0] < 4:
                 window.append(window[-1]+1)
 
         while window[-1] > data_list.__len__() - 1:
             window.pop()
         
 
-def receiver_ack(to_send, lat=0.025):
+def receiver_ack(to_send, lat=0.25):
     def send_func():
         ack.put(to_send)
 
@@ -83,6 +83,9 @@ def receiver_task():
         if not data.empty():
             # consume data
             recv_data = data.get()
+            if random.random() > probability_of_recv:
+                print("dropped")
+                continue
 
             if recv_data == None:
                 break
@@ -93,7 +96,7 @@ def receiver_task():
             receiver_ack(recv_data['seq'])
             # ack.put(recv_data['seq'])
             # print("Receiver:: Sent ack {} at {}".format(recv_data['seq'], round(time.time() - start_time, 2)))
-            time.sleep(0.025)
+            # time.sleep(0.025)
         pass
 
 sender = threading.Thread(target=sender_task)
